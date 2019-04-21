@@ -6,8 +6,11 @@ int Pluviometer::_debounceLimit;
 int Pluviometer::_mmCounter;
 unsigned long Pluviometer::_now;
 unsigned long Pluviometer::_before;
+float * Pluviometer::_externalMM;
 
-Pluviometer::Pluviometer(int pin) {
+
+Pluviometer::Pluviometer(int pin, float * externalMM) {
+  _externalMM = externalMM;
   _pin = pin;
   _mmCounter = 0;
   _debounceLimit = 200;
@@ -33,9 +36,14 @@ static void Pluviometer::pluviometerHandler(){
     Serial.print("Medida de chuva: ");
     Serial.print(_mmCounter * 0.25);
     Serial.println("mm");
-    Serial.print("Contagem:");
+    Serial.print("Contagem: ");
     Serial.println(_mmCounter);
+    * _externalMM = getMillimeters();
 
   }
  
+}
+
+static float Pluviometer::getMillimeters(){
+	return _mmCounter*0.25;
 }
