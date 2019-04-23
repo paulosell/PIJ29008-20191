@@ -2,7 +2,7 @@
 #include <hal/hal.h>
 #include <SPI.h>
 
-#include "../Classes-Arduino/pluviometer.h"
+#include "pluviometer.h"
 
 #ifdef COMPILE_REGRESSION_TEST
 # define FILLMEIN 0
@@ -10,6 +10,11 @@
 # warning "You must replace the values marked FILLMEIN with real values from the TTN control panel!"
 # define FILLMEIN (#dont edit this, edit the lines that use FILLMEIN)
 #endif
+
+typedef union{
+    float number;
+    byte bytes[4];
+} FLOATUNION_t;
 
 // LoRaWAN NwkSKey, network session key
 static const PROGMEM u1_t NWKSKEY[16] = { 0x20, 0x76, 0xFA, 0x1C, 0xBF, 0x7B, 0x99, 0x4F, 0x9F, 0x91, 0xEE, 0xB5, 0xB1, 0xCB, 0x9B, 0x64 };
@@ -24,7 +29,7 @@ void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
-static uint8_t mydata[] = "Hello!";
+Pluviometer p(3);
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -106,6 +111,13 @@ void onEvent (ev_t ev) {
 }
 
 void do_send(osjob_t* j){
+  FLOATUNION_t mm ;
+  mm.number = p.getMillimeters();  
+  uint8_t mydata[4];
+  mydata[0] = mm.bytes[0];
+  mydata[1] = mm.bytes[1];
+  mydata[2] = mm.bytes[2];
+  mydata[3] = mm.bytes[3];
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
@@ -118,6 +130,7 @@ void do_send(osjob_t* j){
 }
 
 void setup() {
+  
 //    pinMode(13, OUTPUT); 
     while (!Serial); // wait for Serial to be initialized
     Serial.begin(9600);
@@ -193,6 +206,7 @@ void setup() {
 }
 
 void loop() {
+  
     os_runloop_once();
     
 }
