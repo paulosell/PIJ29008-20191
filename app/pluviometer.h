@@ -7,10 +7,11 @@
 class Pluviometer
 {
   public:
-    Pluviometer(int pin, float * externalMM);
+    Pluviometer(int pin);
     static int debounce();
     static void pluviometerHandler();
-    float getMillimeters();
+    int getMillimeters();
+    void setCounter(int counter);
     
   private:
      int _pin;

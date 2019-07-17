@@ -44,8 +44,9 @@ static void Pluviometer::pluviometerHandler(){
 }
 
 
-float Pluviometer::getMillimeters(){
-	return _mmCounter*0.25;
+void Pluviometer::setCounter(int counter){
+  _mmCounter = counter;
 }
-
-
+int Pluviometer::getMillimeters(){
+	return _mmCounter;
+}

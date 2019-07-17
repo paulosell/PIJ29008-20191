@@ -2,6 +2,9 @@
 #include <hal/hal.h>
 #include <SPI.h>
 
+
+
+
 #include "pluviometer.h"
 
 #ifdef COMPILE_REGRESSION_TEST
@@ -11,20 +14,15 @@
 # define FILLMEIN (#dont edit this, edit the lines that use FILLMEIN)
 #endif
 
-typedef union{
-    float number;
-    byte bytes[4];
-} FLOATUNION_t;
+unsigned long before = millis();
 
 // LoRaWAN NwkSKey, network session key
-static const PROGMEM u1_t NWKSKEY[16] = { 0x20, 0x76, 0xFA, 0x1C, 0xBF, 0x7B, 0x99, 0x4F, 0x9F, 0x91, 0xEE, 0xB5, 0xB1, 0xCB, 0x9B, 0x64 };
-
+static const PROGMEM u1_t NWKSKEY[16] = { 0xE9, 0x75, 0x88, 0x92, 0x9F, 0xBE, 0xCF, 0x04, 0x0A, 0xC3, 0x4F, 0x93, 0x2D, 0x11, 0x65, 0x56 };
 // LoRaWAN AppSKey, application session key
-static const u1_t PROGMEM APPSKEY[16] = { 0x8D, 0x8A, 0xDC, 0x5C, 0x85, 0x3E, 0x6D, 0x16, 0x2C, 0x3F, 0x39, 0x70, 0x7C, 0xDF, 0xCA, 0x00 };
+static const u1_t PROGMEM APPSKEY[16] ={ 0x44, 0xBF, 0x43, 0x8A, 0xBA, 0x83, 0x04, 0xEB, 0x10, 0x50, 0xB2, 0x29, 0x0B, 0xAE, 0xB7, 0x39 };
 
 // LoRaWAN end-device address (DevAddr)
-static const u4_t DEVADDR = 0x260319AC; 
-
+static const u4_t DEVADDR = 0x26021408;
 void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
@@ -32,9 +30,10 @@ void os_getDevKey (u1_t* buf) { }
 Pluviometer p(3);
 static osjob_t sendjob;
 
+
 // Schedule TX every this many seconds (might become longer due to duty
 // cycle limitations).
-const unsigned TX_INTERVAL = 30;
+const unsigned TX_INTERVAL = 120;
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
@@ -111,19 +110,41 @@ void onEvent (ev_t ev) {
 }
 
 void do_send(osjob_t* j){
-  FLOATUNION_t mm ;
-  mm.number = p.getMillimeters();  
-  uint8_t mydata[4];
-  mydata[0] = mm.bytes[0];
-  mydata[1] = mm.bytes[1];
-  mydata[2] = mm.bytes[2];
-  mydata[3] = mm.bytes[3];
+  int intensity = analogRead(A1);
+  Serial.println(intensity);
+  unsigned long now = millis();
+  
+  if (now - before >= 86400000){    //Zera contagem de chuva a cada dia
+    before = now;
+    p.setCounter(0);  
+    Serial.println("zerou");
+  
+  }
+   
+  if(intensity > 900 && intensity <= 1023){  // Verifica intensidade de chuva se houver
+    intensity = 0;
+  }
+  else if (intensity > 600 && intensity <= 900){
+    intensity = 1;
+  }
+  else if(intensity > 400 && intensity <=600){
+    intensity = 2;
+  }
+  else if (intensity <= 400){
+    intensity = 3;
+  }
+
+  Serial.print("Intensidade de chuva: ");
+  Serial.println(intensity);
+  u1_t mydata[2];
+  mydata[0] = p.getMillimeters();
+  mydata[1] = intensity;
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
+        LMIC_setTxData2(1, mydata, sizeof(mydata), 0);
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
@@ -131,7 +152,7 @@ void do_send(osjob_t* j){
 
 void setup() {
   
-//    pinMode(13, OUTPUT); 
+    pinMode(A1, INPUT); 
     while (!Serial); // wait for Serial to be initialized
     Serial.begin(9600);
     delay(100);     // per sample code on RF_95 test
